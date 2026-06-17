@@ -1,0 +1,42 @@
+# 复制为 config.yaml 后填写。config.yaml 已被 .gitignore 忽略。
+# 凭证也可改用环境变量 FEISHU_APP_ID / FEISHU_APP_SECRET(优先级高于此文件)。
+
+feishu:
+  app_id: "cli_xxxxxxxxxxxx"
+  app_secret: "xxxxxxxxxxxxxxxxxxxxxxxx"
+
+local:
+  # Obsidian 库根目录(绝对路径)
+  vault_path: "/Users/ray/Documents/storage/obsidian/RayValut"
+  # 媒体(图片/附件)落盘子目录,相对 vault_path
+  assets_dir: "assets"
+
+# 要同步的知识库列表(可多个)。留空则首次运行 `feishu-sync init` 交互选择。
+# 每个知识库映射到 vault 下的一个子目录(每库一个顶层文件夹)。
+spaces:
+  - space_id: "7xxxxxxxxxxxxxxxxx1"
+    name: "前端知识库"          # 仅备注,便于人眼识别
+    local_subdir: "前端"        # 相对 vault_path 的子目录
+    enabled: true
+  - space_id: "7xxxxxxxxxxxxxxxxx2"
+    name: "后端架构"
+    local_subdir: "后端架构"
+    enabled: true
+
+sync:
+  # 冲突策略: latest-wins(按修改时间最新覆盖) | feishu-wins | local-wins | manual
+  conflict: "latest-wins"
+  # 默认不参与「推送」的本地文件(glob,相对 vault_path)。派生/索引/双链图谱类应排除。
+  push_exclude:
+    - "0[0-5]-知识图谱-*.md"
+    - "_图谱/**"
+    - "assets/**"
+    - ".obsidian/**"
+  # 删除保护:某一侧消失时,默认仅标记 orphaned,不实际删除
+  delete_protection: true
+
+# Obsidian 双链化(Phase 7,同步打通后启用)
+obsidian:
+  enabled: false
+  # 生成的双链图谱/索引落盘目录,相对 vault_path(应加入上面的 push_exclude)
+  graph_dir: "_图谱"

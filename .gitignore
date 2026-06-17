@@ -1,0 +1,15 @@
+# 凭证与运行态,绝不入库
+config.yaml
+.state/
+logs/
+*.log
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+
+# 探测产物
+scripts/sample_blocks.json

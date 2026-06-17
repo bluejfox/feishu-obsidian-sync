@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- 任务唯一标识 -->
+    <key>Label</key>
+    <string>com.ray.feishu-sync</string>
+
+    <!-- 要执行的命令:用 venv 的 python 跑 sync(绝对路径,不依赖 PATH) -->
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/ray/Documents/storage/feishu-sync/.venv/bin/python</string>
+        <string>-m</string>
+        <string>feishu_sync.cli</string>
+        <string>sync</string>
+    </array>
+
+    <!-- 工作目录:保证能读到 config.yaml 与 .state/ -->
+    <key>WorkingDirectory</key>
+    <string>/Users/ray/Documents/storage/feishu-sync</string>
+
+    <!-- 何时运行:每隔 3600 秒(1 小时)跑一次。改频率就改这个秒数,然后重新 enable。
+         (睡眠期间错过的会在唤醒后补跑一次,不堆积) -->
+    <key>StartInterval</key>
+    <integer>3600</integer>
+
+    <!-- 加载时立即先跑一次,之后每小时一次(改 false 则等满 1 小时才首次运行) -->
+    <key>RunAtLoad</key>
+    <true/>
+
+    <!-- 正常日志由程序写入有界滚动文件 logs/feishu-sync.log。
+         这里 stdout 丢弃,stderr 仅留作"程序崩溃/启动失败"的兜底(极少,文件很小)。 -->
+    <key>StandardOutPath</key>
+    <string>/dev/null</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/ray/Documents/storage/feishu-sync/logs/launchd.err.log</string>
+</dict>
+</plist>
