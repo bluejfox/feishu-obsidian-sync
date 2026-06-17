@@ -208,6 +208,31 @@ class FeishuClient:
                           self._client.docx.v1.document_block_children.create, req)
         return _obj_to_dict(resp.data) or {}
 
+    def upload_media_to_block(self, document_id: str, block_id: str, file_name: str, data: bytes) -> str:
+        """把图片字节上传并绑定到 docx 图片块,返回 file_token。"""
+        import io
+        import json as _json
+        from lark_oapi.api.drive.v1 import UploadAllMediaRequest, UploadAllMediaRequestBody
+        body = (UploadAllMediaRequestBody.builder()
+                .file_name(file_name).parent_type("docx_image").parent_node(block_id)
+                .size(len(data)).file(io.BytesIO(data))
+                .extra(_json.dumps({"drive_route_token": document_id})).build())
+        resp = self._call("drive.media.upload_all", self._client.drive.v1.media.upload_all,
+                          UploadAllMediaRequest.builder().request_body(body).build())
+        return (_obj_to_dict(resp.data) or {}).get("file_token", "")
+
+    def replace_image(self, document_id: str, block_id: str, file_token: str) -> None:
+        """把上传得到的 file_token 回填到图片块(使图片真正显示)。"""
+        from lark_oapi.api.docx.v1 import (
+            PatchDocumentBlockRequest, UpdateBlockRequest, ReplaceImageRequest,
+        )
+        req = (PatchDocumentBlockRequest.builder()
+               .document_id(document_id).block_id(block_id).document_revision_id(-1)
+               .request_body(UpdateBlockRequest.builder()
+                             .replace_image(ReplaceImageRequest.builder().token(file_token).build()).build())
+               .build())
+        self._call("docx.block.patch", self._client.docx.v1.document_block.patch, req)
+
     def create_wiki_node(self, space_id: str, parent_node_token: str | None, title: str) -> dict:
         """在知识库新建一个 docx 节点,返回节点 dict(含 node_token / obj_token)。"""
         from lark_oapi.api.wiki.v2 import CreateSpaceNodeRequest, Node

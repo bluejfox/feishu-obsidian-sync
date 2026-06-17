@@ -226,7 +226,8 @@ class SyncEngine:
         if dry_run:
             report.pushed.append(rec.local_path + "  (dry-run)")
             return "dry-run"
-        push_document(self.client, rec.document_id, markdown)
+        push_document(self.client, rec.document_id, markdown,
+                      self.cfg.local.vault_path, self.cfg.local.assets_dir)
         self._refresh_baseline_after_push(rec, abs_path, file_hash(abs_path))
         report.pushed.append(rec.local_path)
         logger.info("↑ pushed %s", rec.local_path)
@@ -286,7 +287,8 @@ class SyncEngine:
         parent_token = self._resolve_parent_token(sm, rel)
         node = self.client.create_wiki_node(sm.space_id, parent_token, title)
         document_id = node.get("obj_token")
-        push_document(self.client, document_id, markdown)
+        push_document(self.client, document_id, markdown,
+                      self.cfg.local.vault_path, self.cfg.local.assets_dir)
         meta = self.client.get_document(document_id)
         edit_time = int(self.client.get_node(node["node_token"]).get("obj_edit_time", 0) or 0)
         self.manifest.upsert(DocRecord(

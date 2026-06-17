@@ -77,7 +77,7 @@ def main() -> int:
     parent_token = _ensure_parent(client, space_id, args.parent)
     node = client.create_wiki_node(space_id, parent_token, title)
     document_id = node.get("obj_token")
-    push_document(client, document_id, body)
+    push_document(client, document_id, body, cfg.local.vault_path, cfg.local.assets_dir)
 
     url = node.get("url", "")
     print(f"✅ 已推送到飞书「{args.space}」/{args.parent}:{title}")

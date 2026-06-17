@@ -34,6 +34,8 @@ sync:
     - ".obsidian/**"
   # 删除保护:某一侧消失时,默认仅标记 orphaned,不实际删除
   delete_protection: true
+  # 本地在 spaces 目录内新增的 .md(不在 push_exclude)自动建到飞书对应位置
+  create_new_feishu: true
 
 # Obsidian 双链化(Phase 7,同步打通后启用)
 obsidian:
