@@ -267,6 +267,37 @@ class FeishuClient:
         req = DeleteFileRequest.builder().file_token(token).type(file_type).build()
         self._call("drive.file.delete", self._client.drive.v1.file.delete, req)
 
+    # ---- IM 通知(用于 Claude Code 钩子推送) ----
+    def resolve_open_id(self, email: str | None = None, mobile: str | None = None) -> str:
+        """用邮箱或手机号反查本租户用户的 open_id。需应用有 contact:user.id:readonly 权限。"""
+        from lark_oapi.api.contact.v3 import BatchGetIdUserRequest, BatchGetIdUserRequestBody
+        body = BatchGetIdUserRequestBody.builder()
+        if email:
+            body = body.emails([email])
+        if mobile:
+            body = body.mobiles([mobile])
+        req = (BatchGetIdUserRequest.builder()
+               .user_id_type("open_id").request_body(body.build()).build())
+        resp = self._call("contact.user.batch_get_id", self._client.contact.v3.user.batch_get_id, req)
+        for u in (_obj_to_dict(resp.data) or {}).get("user_list", []) or []:
+            uid = u.get("user_id")
+            if uid:  # user_id_type=open_id 时此字段即 open_id
+                return uid
+        raise FeishuError("contact.user.batch_get_id", -1,
+                          "未能由邮箱/手机号解析到 open_id(检查值是否正确、用户是否在本租户)")
+
+    def send_text(self, receive_id: str, text: str, receive_id_type: str = "open_id") -> str:
+        """给指定接收者发一条纯文本消息,返回 message_id。需应用有 im:message 权限。"""
+        import json as _json
+        from lark_oapi.api.im.v1 import CreateMessageRequest, CreateMessageRequestBody
+        req = (CreateMessageRequest.builder().receive_id_type(receive_id_type)
+               .request_body(CreateMessageRequestBody.builder()
+                             .receive_id(receive_id).msg_type("text")
+                             .content(_json.dumps({"text": text}, ensure_ascii=False)).build())
+               .build())
+        resp = self._call("im.message.create", self._client.im.v1.message.create, req)
+        return (_obj_to_dict(resp.data) or {}).get("message_id", "")
+
     # 暴露原始 SDK client,供尚未封装的接口直接使用
     @property
     def raw(self) -> lark.Client:
