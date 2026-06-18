@@ -133,6 +133,21 @@ def _table_cell_ids(resp: dict, client: FeishuClient, document_id: str) -> list[
     return (tabs[-1].get("table") or {}).get("cells", []) if tabs else []
 
 
+def _cell_default_text_blocks(client: FeishuClient, document_id: str,
+                              cell_ids: list[str]) -> dict[str, str]:
+    """返回 {单元格id: 其自带的首个文本块id}。
+
+    飞书新建表格时每个单元格自带一个空段落块;直接 patch 它来填内容,可避免
+    "新增块 + 残留默认空块"导致单元格出现尾随空行。"""
+    by_id = {b["block_id"]: b for b in client.list_blocks(document_id)}
+    out: dict[str, str] = {}
+    for cid in cell_ids:
+        kids = (by_id.get(cid) or {}).get("children") or []
+        if kids:
+            out[cid] = kids[0]
+    return out
+
+
 def push_document(client: FeishuClient, document_id: str, markdown: str,
                   vault_path: Path | None = None, assets_dir: str = "assets") -> int:
     """清空并用 markdown 重建 docx 内容(支持表格、图片)。返回写入的顶层段数。
@@ -160,10 +175,16 @@ def push_document(client: FeishuClient, document_id: str, markdown: str,
             ncol = max(len(r) for r in rows)
             resp = client.create_block_children(document_id, document_id, [_bare_table_block(len(rows), ncol)], idx)
             cell_ids = _table_cell_ids(resp, client, document_id)
+            default_blocks = _cell_default_text_blocks(client, document_id, cell_ids)
             for i, cid in enumerate(cell_ids):
                 r, c = divmod(i, ncol)
                 text = rows[r][c] if (r < len(rows) and c < len(rows[r])) else ""
-                if text:
+                if not text:
+                    continue
+                bid = default_blocks.get(cid)
+                if bid:                       # 改单元格自带的空块,单元格只留 1 块、无尾随空行
+                    client.update_block_text(document_id, bid, text)
+                else:                         # 兜底:拿不到默认块时仍新增(极少发生)
                     client.create_block_children(document_id, cid, [_text_block(text)], 0)
             idx += 1
         else:  # image

@@ -233,6 +233,23 @@ class FeishuClient:
                .build())
         self._call("docx.block.patch", self._client.docx.v1.document_block.patch, req)
 
+    def update_block_text(self, document_id: str, block_id: str, text: str) -> None:
+        """把某文本块内容整段替换为单一 text run。用于填表格单元格自带的空段落块
+        (而非新增子块——后者会在单元格内残留默认空段落,渲染出尾随空行)。"""
+        from lark_oapi.api.docx.v1 import (
+            PatchDocumentBlockRequest, TextElement, TextRun,
+            UpdateBlockRequest, UpdateTextElementsRequest,
+        )
+        tr = TextRun.builder().content(text).build()
+        el = TextElement.builder().text_run(tr).build()
+        req = (PatchDocumentBlockRequest.builder()
+               .document_id(document_id).block_id(block_id).document_revision_id(-1)
+               .request_body(UpdateBlockRequest.builder()
+                             .update_text_elements(
+                                 UpdateTextElementsRequest.builder().elements([el]).build()).build())
+               .build())
+        self._call("docx.block.patch", self._client.docx.v1.document_block.patch, req)
+
     def create_wiki_node(self, space_id: str, parent_node_token: str | None, title: str) -> dict:
         """在知识库新建一个 docx 节点,返回节点 dict(含 node_token / obj_token)。"""
         from lark_oapi.api.wiki.v2 import CreateSpaceNodeRequest, Node
