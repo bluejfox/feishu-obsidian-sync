@@ -1,6 +1,6 @@
 ---
 description: 把当前对话内容按你的提示词整理成笔记,推送到飞书「个人」库的「Claude笔记」文件夹
-allowed-tools: Write, Read, Bash(rm -f /tmp/claude-feishu-note.md), Bash(/Users/ray/Documents/storage/feishu-sync/.venv/bin/python:*)
+allowed-tools: Write, Read, Bash(rm -f /tmp/claude-feishu-note*.md), Bash(/Users/ray/Documents/storage/feishu-sync/.venv/bin/python:*)
 ---
 
 ## 角色
@@ -28,13 +28,33 @@ allowed-tools: Write, Read, Bash(rm -f /tmp/claude-feishu-note.md), Bash(/Users/
 - 可使用 Markdown 表格(对比/参数等场景推荐),会写成飞书原生表格。
 - 一般无需插图;若确需引用库内已有图片,用 `![[assets/文件名]]`(会上传到飞书)。代码用 ``` 围栏。
 
-## 完成整理后,依次执行
-1. 先删除可能残留的旧文件,避免误推上一次的内容:`rm -f /tmp/claude-feishu-note.md`。
-2. 用 Write 把笔记写到 `/tmp/claude-feishu-note.md`(务必含首行 `# 标题`)。
-3. 运行(绝对路径):
+## 主题划分与确认(关键 · 推送前必做)
+整理完成后**先做主题划分,绝不直接推送**——先把拟生成的内容用提纲形式展示给用户,等其回复后再推:
+
+1. 判断这段内容包含几个**相互独立的主题**(不同领域/不相关的事各算一个主题)。
+2. **先展示提纲,不推送**:编号列出每个主题的拟用标题 + 一句话摘要,并附菜单。单主题时也照样展示(提纲只有 1 条),同样等待确认。示例:
    ```
-   /Users/ray/Documents/storage/feishu-sync/.venv/bin/python /Users/ray/Documents/storage/feishu-sync/scripts/push_note.py --space 个人 --parent "Claude笔记" --file /tmp/claude-feishu-note.md
+   检测到 3 个主题:
+     ① 限流的 4 种算法与阈值设定
+     ② push_note 本地留底与 manifest 基线
+     ③ 飞书表格单元格尾随空行修复
+   请回复:全部 / 指定编号(如 1,3) / 合并
    ```
-4. 把脚本输出的**飞书文档链接**原样告诉用户;若脚本报错(如含图片),按提示修正后重试。
+3. 按用户回复决定如何落库:
+   - **全部**:每个主题各成一篇,逐篇推送。
+   - **指定编号**(如 `1,3`):只生成被选中的主题,各成一篇。
+   - **合并**:把全部内容揉成 1 篇推送。
+   - 用户也可能用自然语言表达(如"只要第二个"),按其意图理解即可。
+
+## 用户确认后,依次执行
+0. 先清理可能残留的临时文件,避免误推上一次的内容:`rm -f /tmp/claude-feishu-note*.md`。
+1. 按确认结果写临时文件(务必各含首行 `# 标题`):
+   - **多篇**(全部 / 指定编号):为每个选中主题写一份 `/tmp/claude-feishu-note-<n>.md`(n 从 1 递增)。
+   - **合并**:写单篇 `/tmp/claude-feishu-note.md`。
+2. 对**每一个**临时文件运行(绝对路径,多篇就逐个循环执行):
+   ```
+   /Users/ray/Documents/storage/feishu-sync/.venv/bin/python /Users/ray/Documents/storage/feishu-sync/scripts/push_note.py --space 个人 --parent "Claude笔记" --file <上一步写的文件路径>
+   ```
+3. 把每篇脚本输出的**飞书文档链接逐条原样**告诉用户;若某篇报错(如含图片),按提示修正后重试该篇。
 
 用户的整理提示词:$ARGUMENTS
