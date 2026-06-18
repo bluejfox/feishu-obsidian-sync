@@ -9,6 +9,71 @@
 
 ---
 
+## 方案原理
+
+**一句话:把飞书里的每篇文档,在电脑本地存一份对应的 Markdown 文件;谁改了就把改动同步给另一边,让两边内容始终一致。**
+
+可以把它想成「云端文档」和「本地文件」互为镜子,中间有个小账本帮忙记账:
+
+1. **一一对应**:飞书里的每篇文档,对应本地一个 `.md` 文件;飞书里的文件夹,对应本地一个同名文件夹。每个本地文件开头藏了几行信息,记着「我对应飞书哪篇文档」,所以即使你改了文件名也不会认错。
+
+2. **记账本**:工具内部存了一个小账本,记录「上一次同步完成时,两边各自长什么样」。下次同步时,拿现在的状态和账本对一对,就知道这段时间谁动过。
+
+3. **谁改了同步谁**:
+   - 只有本地改了 → 把本地的传上飞书;
+   - 只有飞书改了 → 把飞书的拉下来;
+   - **两边都改了 → 算"冲突"**,默认按"谁改得更晚就用谁的",并且**把要被覆盖的那一份先备份起来**,绝不会让你的内容凭空消失。
+
+4. **格式照搬**:飞书的标题、列表、代码、**表格、图片**等,都会在两边之间如实转换,不只是纯文字。
+
+5. **自动跑**:每小时自动同步一次(开机后台运行,不用管);另外在 Claude Code 里输入 `/note`,就能把当前对话整理成笔记一键发到飞书,同时本地也留一份。
+
+```
+   飞书文档  ◀──── 谁改了同步谁 ────▶  本地 .md 文件
+       │                                    │
+       └────────▶  对比账本(上次状态)◀──────┘
+              只本地改→上传 / 只飞书改→下载 / 都改→冲突(留备份)
+```
+
+---
+
+## 安装方式
+
+**前置**:macOS、Python ≥ 3.10、一个具备 Wiki 读写权限的飞书自建应用(拿到 `app_id` / `app_secret`)。
+
+```bash
+# 1) 获取代码
+git clone https://github.com/bluejfox/feishu-obsidian-sync.git feishu-sync
+cd feishu-sync
+
+# 2) 创建虚拟环境并安装(可编辑安装,带 CLI 入口)
+python3 -m venv .venv
+.venv/bin/pip install -e .
+
+# 3) 配置:复制模板,填 app_id/app_secret、vault_path、spaces
+cp config.example.yaml config.yaml
+#   凭证也可改用环境变量 FEISHU_APP_ID / FEISHU_APP_SECRET(优先级更高)
+
+# 4) 列出应用可访问的知识库,回填 config.yaml 的 spaces
+.venv/bin/python -m feishu_sync.cli init
+
+# 5) 预览(只读)→ 首次全量拉取
+.venv/bin/python -m feishu_sync.cli status
+.venv/bin/python -m feishu_sync.cli pull
+```
+
+**可选 · 开启每小时定时同步**:`bash scripts/timer.sh enable`(详见下文「定时器」)。
+
+**可选 · 安装 Claude Code `/note` 命令**:把仓库内备份的命令文件复制到全局命令目录即可全局可用。
+
+```bash
+cp claude/commands/note.md ~/.claude/commands/note.md
+```
+
+> `claude/commands/note.md` 是 `~/.claude/commands/note.md` 的**版本化备份**;两者需保持同步(改其一即同步另一)。
+
+---
+
 ## 快速开始
 
 ```bash
@@ -105,9 +170,9 @@ bash scripts/timer.sh logs       # 查看最近同步日志
   echo "# 标题\n正文" | .venv/bin/python scripts/push_note.py --space 个人 --parent "Claude笔记"
   .venv/bin/python scripts/push_note.py --space 个人 --parent "Claude笔记" --file note.md
   ```
-  标题取首行 `# 标题`;父文件夹不存在会自动创建;含表格/图片会被拒绝(同 push 限制)。
+  标题取首行 `# 标题`;父文件夹不存在会自动创建;支持表格(原生表格),仅含图片时按 push 限制处理。
 
-> 推到飞书的笔记是新文档,不在本地 manifest 里;下次 `pull` 会把它拉到本地 `个人/Claude笔记/`。
+> 推送成功后会**在本地 vault 立即留一份副本并登记 manifest 基线**(`个人/Claude笔记/`),因此之后改本地这份会被判为 push(本地→飞书),不会被定时同步的飞书版回拉覆盖。加 `--no-local` 可关闭留底。
 
 ## 已知限制
 
@@ -126,8 +191,10 @@ feishu-sync/
 ├── config.example.yaml       # 配置模板
 ├── feishu_sync/              # 源码:client/wiki/docx_*/converter/media/state/sync/cli
 ├── scripts/
+│   ├── push_note.py          # /note 底层:整理好的 md → 飞书新建 + 本地留底
 │   ├── timer.sh              # 定时器开关
 │   └── com.ray.feishu-sync.plist  # launchd 配置
+├── claude/commands/note.md   # Claude Code /note 命令的版本化备份(与 ~/.claude/commands/note.md 同步)
 ├── logs/                     # 滚动日志(gitignore)
 └── .state/                   # 同步清单 manifest.json + 冲突备份(gitignore)
 ```
