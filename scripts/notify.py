@@ -30,8 +30,17 @@ from feishu_sync.config import DEFAULT_CONFIG_PATH, load_config  # noqa: E402
 
 
 def _client() -> FeishuClient:
+    """通知用的飞书客户端。
+
+    通知可使用独立的机器人应用:优先取 config.yaml `notify.app_id`/
+    `notify.app_secret`;两者缺一即回退到同步共用的 `feishu.*` 主凭据。
+    注意 open_id 按应用隔离,换应用后须用新应用重新 resolve。
+    """
     cfg = load_config()
-    return FeishuClient(cfg.feishu.app_id, cfg.feishu.app_secret)
+    no = cfg.raw.get("notify") or {}
+    app_id = no.get("app_id") or cfg.feishu.app_id
+    app_secret = no.get("app_secret") or cfg.feishu.app_secret
+    return FeishuClient(app_id, app_secret)
 
 
 def _notify_target() -> str:
